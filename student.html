@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+  <title>Vào phòng thi — VocabQuiz</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="app-shell">
+
+    <!-- ===================== SCREEN 1: LOBBY (nhập PIN + Tên) ===================== -->
+    <div id="screen-join" class="center-stage">
+      <div class="panel panel-narrow" style="text-align:center;">
+        <div class="eyebrow">VocabQuiz</div>
+        <h1>Tham gia phòng thi</h1>
+        <p class="subtitle">Nhập mã PIN do giáo viên cung cấp</p>
+
+        <div class="field" style="margin-top:24px;">
+          <input id="input-pin" class="input input-pin" type="text" inputmode="numeric" maxlength="6" placeholder="000000" />
+        </div>
+        <div class="field">
+          <input id="input-name" class="input" type="text" placeholder="Nhập tên của bạn" />
+        </div>
+        <button id="btn-join" class="btn btn-primary btn-block btn-lg">Tham gia phòng thi</button>
+      </div>
+    </div>
+
+    <!-- ===================== SCREEN 2: RULES + FULLSCREEN GATE ===================== -->
+    <div id="screen-rules" class="center-stage hidden">
+      <div class="panel panel-narrow" style="text-align:center;">
+        <div class="eyebrow">Trước khi bắt đầu</div>
+        <h1>Quy chế phòng thi</h1>
+        <ul class="rules-list">
+          <li>Mỗi câu hỏi có đúng <strong>15 giây</strong> để trả lời.</li>
+          <li>Bài thi sẽ chạy ở chế độ <strong>toàn màn hình</strong>.</li>
+          <li>Không được thoát toàn màn hình trong suốt quá trình thi.</li>
+          <li>Không được chuyển sang tab hoặc ứng dụng khác.</li>
+          <li>Vi phạm bất kỳ điều nào ở trên sẽ <strong>huỷ toàn bộ bài thi ngay lập tức</strong> và không được lưu kết quả.</li>
+        </ul>
+        <button id="btn-start-fullscreen" class="btn btn-primary btn-block btn-lg">
+          BẤM VÀO ĐÂY ĐỂ VÀO PHÒNG THI &amp; BẬT TOÀN MÀN HÌNH
+        </button>
+      </div>
+    </div>
+
+    <!-- ===================== SCREEN 3: QUIZ ROOM ===================== -->
+    <div id="screen-quiz" class="center-stage hidden">
+      <div class="panel panel-wide">
+        <div class="quiz-header">
+          <div id="timer-container"></div>
+          <div style="flex:1; text-align:center;">
+            <div id="counter-label" class="subtitle mono" style="margin-bottom:8px;"></div>
+            <div id="progress-dot-row" class="progress-dot-row" style="justify-content:center;"></div>
+          </div>
+          <div style="width:76px;"></div> <!-- spacer để cân đối layout với timer bên trái -->
+        </div>
+
+        <div id="meaning-text" class="question-meaning">—</div>
+
+        <div class="answer-row">
+          <input id="answer-input" class="input" type="text" placeholder="Gõ từ Tiếng Anh..." autocomplete="off" autocapitalize="off" spellcheck="false" />
+          <button id="submit-btn" class="btn btn-primary" style="min-width:120px;">Submit</button>
+        </div>
+
+        <div id="feedback-banner" class="feedback-banner"></div>
+      </div>
+    </div>
+
+    <!-- ===================== SCREEN 4: END GAME ===================== -->
+    <div id="screen-end" class="center-stage hidden">
+      <div class="panel panel-narrow result-hero">
+        <div class="eyebrow">Hoàn thành bài thi</div>
+        <h1>Kết quả của bạn</h1>
+        <div id="result-percent" class="result-percent">0%</div>
+        <p class="subtitle" id="result-fraction">0/0 câu đúng</p>
+        <p class="subtitle" id="result-duration"></p>
+        <a href="student.html" class="btn btn-secondary btn-block" style="margin-top:24px;">Về màn hình chính</a>
+      </div>
+    </div>
+
+    <!-- ===================== SCREEN 5: VIOLATION (huỷ bài thi) ===================== -->
+    <div id="screen-violation" class="violation-overlay hidden">
+      <div class="panel panel-narrow" style="text-align:center; border-color: var(--color-danger);">
+        <div class="eyebrow" style="color: var(--color-danger);">Vi phạm quy chế thi</div>
+        <h1>Bài thi đã bị huỷ</h1>
+        <p class="subtitle" id="violation-reason"></p>
+        <p class="subtitle">Toàn bộ dữ liệu bài làm của bạn đã bị xoá và không được ghi nhận.</p>
+        <a href="student.html" class="btn btn-danger btn-block" style="margin-top:20px;">Quay lại màn hình nhập mã</a>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module">
+    import { ensureAuth } from "./js/firebase-config.js";
+    import { AntiCheatGuard } from "./js/student/AntiCheatGuard.js";
+    import { StudentJoin } from "./js/student/StudentJoin.js";
+    import { QuizRoom } from "./js/student/QuizRoom.js";
+
+    const screens = {
+      join: document.querySelector("#screen-join"),
+      rules: document.querySelector("#screen-rules"),
+      quiz: document.querySelector("#screen-quiz"),
+      end: document.querySelector("#screen-end"),
+      violation: document.querySelector("#screen-violation"),
+    };
+
+    function showOnly(name) {
+      Object.entries(screens).forEach(([key, el]) => {
+        el.classList.toggle("hidden", key !== name);
+      });
+    }
+
+    async function main() {
+      const user = await ensureAuth();
+      const antiCheatGuard = new AntiCheatGuard(() => {}); // onViolation sẽ được gán lại bởi QuizRoom.start()
+
+      const quizRoom = new QuizRoom({
+        elements: {
+          timerContainer: document.querySelector("#timer-container"),
+          progressDotRow: document.querySelector("#progress-dot-row"),
+          counterLabel: document.querySelector("#counter-label"),
+          meaningText: document.querySelector("#meaning-text"),
+          answerInput: document.querySelector("#answer-input"),
+          submitBtn: document.querySelector("#submit-btn"),
+          feedbackBanner: document.querySelector("#feedback-banner"),
+        },
+        antiCheatGuard,
+        onDisqualified: (reasonText) => {
+          document.querySelector("#violation-reason").textContent = reasonText;
+          showOnly("violation");
+          screens.violation.classList.remove("hidden"); // overlay riêng, luôn hiện đè lên
+        },
+        onFinished: ({ correctCount, totalQuestions, accuracy, durationLabel }) => {
+          document.querySelector("#result-percent").textContent = `${accuracy}%`;
+          document.querySelector("#result-fraction").textContent = `${correctCount}/${totalQuestions} câu đúng`;
+          document.querySelector("#result-duration").textContent = `Thời gian hoàn thành: ${durationLabel}`;
+          showOnly("end");
+        },
+      });
+
+      new StudentJoin({
+        screenJoin: screens.join,
+        screenRules: screens.rules,
+        antiCheatGuard,
+        onReady: async ({ pin, room, studentName }) => {
+          showOnly("quiz");
+          document.querySelector("#submit-btn").addEventListener("click", () => quizRoom.handleSubmit());
+          document.querySelector("#answer-input").addEventListener("keydown", (e) => {
+            if (e.key === "Enter") quizRoom.handleSubmit();
+          });
+          try {
+            await quizRoom.start({ pin, room, studentId: user.uid, studentName });
+          } catch (err) {
+            console.error(err);
+            alert("Không thể bắt đầu bài thi: " + err.message);
+          }
+        },
+      });
+    }
+
+    main();
+  </script>
+</body>
+</html>

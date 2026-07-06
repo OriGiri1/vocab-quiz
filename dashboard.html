@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+  <title>Live Dashboard — VocabQuiz</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- ===================== CỔNG MÃ TRUY CẬP GIÁO VIÊN ===================== -->
+  <div id="gate-overlay" class="violation-overlay">
+    <div class="panel panel-narrow" style="text-align:center;">
+      <div class="eyebrow">Khu vực Giáo viên</div>
+      <h1>Nhập mã truy cập</h1>
+      <p class="subtitle">Trang này chỉ dành riêng cho giáo viên.</p>
+      <div class="field" style="margin-top:20px;">
+        <input id="input-teacher-code" class="input" type="password" placeholder="Mã truy cập" autocomplete="off" />
+      </div>
+      <p id="teacher-code-error" style="color:var(--color-danger); font-size:13px; min-height:18px; margin:0 0 8px;"></p>
+      <button id="btn-teacher-code-submit" class="btn btn-primary btn-block btn-lg">Vào trang giáo viên</button>
+    </div>
+  </div>
+
+  <!-- ===================== NỘI DUNG DASHBOARD ===================== -->
+  <div id="dashboard-content" class="app-shell hidden">
+    <div class="top-bar">
+      <div>
+        <div class="eyebrow">VocabQuiz</div>
+        <h2>Live Dashboard</h2>
+      </div>
+      <a href="teacher.html" class="btn btn-secondary">← Danh sách phòng</a>
+    </div>
+
+    <div class="dashboard-body">
+      <p id="dashboard-error" class="subtitle hidden" style="color:var(--color-danger);"></p>
+
+      <div id="dashboard-content-inner" class="hidden">
+        <div class="panel">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
+            <div>
+              <div class="eyebrow">Mã phòng</div>
+              <div class="mono" style="font-size:36px; font-weight:700; color:var(--color-accent);" id="dashboard-pin"></div>
+              <p class="subtitle">Bộ đề: <strong id="dashboard-quizset-name"></strong></p>
+            </div>
+            <div style="text-align:right;">
+              <div id="dashboard-status" style="margin-bottom:10px;"></div>
+              <button id="btn-end-room" class="btn btn-danger hidden">Kết thúc phòng</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top:20px;">
+          <h3>Kết quả trực tiếp</h3>
+          <p class="subtitle">Tự động cập nhật khi có học sinh nộp bài. Sắp xếp theo tỉ lệ % từ cao đến thấp.</p>
+          <div id="results-table-container"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { requireTeacherAccess } from "./js/teacher/AccessGate.js";
+    import { Dashboard } from "./js/teacher/Dashboard.js";
+
+    requireTeacherAccess(document.querySelector("#gate-overlay"), () => {
+      document.querySelector("#dashboard-content").classList.remove("hidden");
+      const dashboard = new Dashboard();
+      dashboard.init();
+    });
+  </script>
+</body>
+</html>

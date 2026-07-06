@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+  <title>Giáo viên — VocabQuiz</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css" />
+  <!-- SheetJS: đọc file Excel (.xlsx) ở phía trình duyệt -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+
+  <!-- ===================== CỔNG MÃ TRUY CẬP GIÁO VIÊN ===================== -->
+  <div id="gate-overlay" class="violation-overlay">
+    <div class="panel panel-narrow" style="text-align:center;">
+      <div class="eyebrow">Khu vực Giáo viên</div>
+      <h1>Nhập mã truy cập</h1>
+      <p class="subtitle">Trang này chỉ dành riêng cho giáo viên.</p>
+      <div class="field" style="margin-top:20px;">
+        <input id="input-teacher-code" class="input" type="password" placeholder="Mã truy cập" autocomplete="off" />
+      </div>
+      <p id="teacher-code-error" style="color:var(--color-danger); font-size:13px; min-height:18px; margin:0 0 8px;"></p>
+      <button id="btn-teacher-code-submit" class="btn btn-primary btn-block btn-lg">Vào trang giáo viên</button>
+    </div>
+  </div>
+
+  <!-- ===================== NỘI DUNG TRANG GIÁO VIÊN ===================== -->
+  <div id="dashboard-content" class="app-shell hidden">
+    <div class="top-bar">
+      <div>
+        <div class="eyebrow">VocabQuiz</div>
+        <h2>Bảng điều khiển Giáo viên</h2>
+      </div>
+      <a href="index.html" class="btn btn-secondary">← Trang chủ</a>
+    </div>
+
+    <div class="dashboard-body">
+      <!-- Danh sách bộ từ vựng -->
+      <div class="panel">
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+          <div>
+            <h3>Bộ từ vựng của tôi</h3>
+            <p class="subtitle">Tạo mới, quản lý và mở phòng thi từ các bộ từ vựng đã lưu.</p>
+          </div>
+          <button id="btn-new-quizset" class="btn btn-primary">+ Tạo bộ từ vựng</button>
+        </div>
+        <div id="quizset-grid" class="card-grid">
+          <p class="subtitle">Đang tải...</p>
+        </div>
+      </div>
+
+      <!-- Danh sách phòng thi đang mở / gần đây -->
+      <div class="panel" style="margin-top:24px;">
+        <h3>Phòng thi</h3>
+        <p class="subtitle">Danh sách được lưu trên máy chủ nên sẽ không mất khi bạn tải lại trang. Phòng tự động bị dọn dẹp sau 7 ngày.</p>
+        <div id="room-list" class="card-grid">
+          <p class="subtitle">Đang tải...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Import bộ từ vựng -->
+  <div id="modal-import" class="violation-overlay hidden">
+    <div class="panel panel-wide" style="text-align:left; max-height:90vh; overflow-y:auto;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3>Tạo bộ từ vựng mới</h3>
+        <button id="btn-close-import" class="btn btn-secondary">Đóng</button>
+      </div>
+
+      <div class="field" style="margin-top:20px;">
+        <label>Tên bộ từ vựng</label>
+        <input id="input-quizset-name" class="input" type="text" placeholder="Ví dụ: Unit 5 - Animals" />
+      </div>
+
+      <div class="field">
+        <label>Import file (.csv hoặc .xlsx — Cột 1: Tiếng Anh, Cột 2: Tiếng Việt)</label>
+        <input id="input-file" class="input" type="file" accept=".csv,.xlsx" />
+      </div>
+
+      <div id="import-preview"></div>
+
+      <button id="btn-save-quizset" class="btn btn-primary btn-block" style="margin-top:20px;">Lưu bộ từ vựng</button>
+    </div>
+  </div>
+
+  <!-- MODAL: Phòng thi vừa tạo -->
+  <div id="modal-room" class="violation-overlay hidden">
+    <div class="panel panel-narrow" style="text-align:center;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3>Phòng thi đã sẵn sàng</h3>
+        <button id="btn-close-room-modal" class="btn btn-secondary">Đóng</button>
+      </div>
+      <p class="subtitle">Gửi mã PIN hoặc link bên dưới cho học sinh</p>
+      <div class="room-pin-display" id="room-pin-value">......</div>
+      <div class="field">
+        <label>Link cho học sinh</label>
+        <a id="room-link-value" class="input mono" style="display:block; text-decoration:none; word-break:break-all;" target="_blank"></a>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button id="btn-copy-link" class="btn btn-secondary" style="flex:1;">Sao chép link</button>
+        <button id="btn-open-dashboard" class="btn btn-primary" style="flex:1;">Mở Live Dashboard</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { requireTeacherAccess } from "./js/teacher/AccessGate.js";
+    import { TeacherDashboard } from "./js/teacher/TeacherDashboard.js";
+
+    requireTeacherAccess(document.querySelector("#gate-overlay"), () => {
+      document.querySelector("#dashboard-content").classList.remove("hidden");
+      const dashboard = new TeacherDashboard();
+      dashboard.init();
+    });
+  </script>
+</body>
+</html>
